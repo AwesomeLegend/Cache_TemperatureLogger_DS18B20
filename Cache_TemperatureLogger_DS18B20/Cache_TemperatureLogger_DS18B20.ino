@@ -6,10 +6,7 @@
 #include <Timer.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
-
-//Declare variables for WiFi authentication
-const char *SSID = "TP-LINK_8860";
-const char *PSW = "58743225";
+#include <EEPROM.h>
 
 //Declare Variables for Pushbullet
 const char* HOST = "api.pushbullet.com";
@@ -28,6 +25,12 @@ WiFiClientSecure client;
 const int ONE_WIRE_BUS = 12;
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
+
+//Create an object to hold WiFi Credentials, used in setup
+struct myObject{
+  String SSID;
+  String Password;  
+};
 
 void handleRoot() {
     char temp[400];
@@ -79,8 +82,15 @@ void setup() {
   Serial.begin(115200);
   Serial.println("Ready");
   
+  
+  //Create the object, then read from EEPROM to in order to get the SSID and Password
+  //I do not want to expose my wifi details on the internet. 
+  int eeAddress = 0;
+  myObject myWiFiObj;
+  EEPROM.get(eeAddress, myWiFiObj);
+
   //Connect to WiFi
-  WiFi.begin(SSID, PSW);
+  WiFi.begin(myWiFiObj.SSID.c_str(), myWiFiObj.Password.c_str());
 
   //Wait for WiFi to Connect
   while (WiFi.status() != WL_CONNECTED){
@@ -91,7 +101,7 @@ void setup() {
   //Display connection info
   Serial.println("");
   Serial.print("Connected to ");
-  Serial.println(SSID);
+  Serial.println(myWiFiObj.SSID);
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
 
@@ -115,8 +125,8 @@ void setup() {
   //Add MDNS Service
   MDNS.addService("http","tcp",80);
 
-  //Setup the timer
-  timer.every(50000,logTimer_onTick);
+  //Setup the timer, every 10 Minutes
+  timer.every(600000,logTimer_onTick);
 
   //Setup the DS18B20 Temperature sensor
   sensors.begin();
