@@ -11,7 +11,8 @@
 //Declare Variables for Pushbullet
 const char* HOST = "api.pushbullet.com";
 const int HTTPSPORT = 443;
-const char* PUSHBULLETAPIKEY = "o.LWZMlAXVmSZtrJBL1EBeiIFVHc0aaosr";
+//**Enter in Pushbullet API Key
+const char* PUSHBULLETAPIKEY = "";
 const char* FINGERPRINT = "28:92:D7:05:86:1B:9A:0A:96:A2:50:B9:08:50:70:7E:83:26:B4:F8";
 
 //Instantiate classes
