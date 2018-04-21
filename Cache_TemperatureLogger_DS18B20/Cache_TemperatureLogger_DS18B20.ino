@@ -14,6 +14,12 @@ const char* HOST = "api.pushbullet.com";
 const int HTTPSPORT = 443;
 const char* FINGERPRINT = "28:92:D7:05:86:1B:9A:0A:96:A2:50:B9:08:50:70:7E:83:26:B4:F8";
 
+//Setup variables for WiFi Config read from config file
+const char* SSID;
+const char* PSW;
+const char* PushBulletAPIKey;
+String apiKeyValue;
+
 //Instantiate classes
 Timer timer;
 ESP8266WebServer server ( 80 );
@@ -25,12 +31,6 @@ WiFiClientSecure client;
 const int ONE_WIRE_BUS = 12;
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
-
-//Setup variables for WiFi Config read from config file, dont know why they need to be pointers
-const char* SSID;
-const char* PSW;
-const char* PushBulletAPIKey;
-String apiKeyValue;
 
 void handleRoot() {
     char temp[400];
