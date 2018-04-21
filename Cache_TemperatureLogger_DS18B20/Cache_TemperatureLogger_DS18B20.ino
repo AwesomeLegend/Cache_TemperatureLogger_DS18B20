@@ -6,13 +6,12 @@
 #include <Timer.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
-#include <EEPROM.h>
+#include <ArduinoJson.h>
+#include "FS.h"
 
 //Declare Variables for Pushbullet
 const char* HOST = "api.pushbullet.com";
 const int HTTPSPORT = 443;
-//**Enter in Pushbullet API Key
-const char* PUSHBULLETAPIKEY = "";
 const char* FINGERPRINT = "28:92:D7:05:86:1B:9A:0A:96:A2:50:B9:08:50:70:7E:83:26:B4:F8";
 
 //Instantiate classes
@@ -27,11 +26,11 @@ const int ONE_WIRE_BUS = 12;
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 
-//Create an object to hold WiFi Credentials, used in setup
-struct myObject{
-  String SSID;
-  String Password;  
-};
+//Setup variables for WiFi Config read from config file, dont know why they need to be pointers
+const char* SSID;
+const char* PSW;
+const char* PushBulletAPIKey;
+String apiKeyValue;
 
 void handleRoot() {
     char temp[400];
@@ -74,24 +73,63 @@ void handleNotFound() {
   server.send ( 404, "text/plain", message );
 }
 
-void setup() {
-  //Setup PinModes
-  pinMode(5,OUTPUT);
-  digitalWrite(5,LOW);
-  
+//Method to load the information from the config.json file uploaded to the board
+bool loadConfig() {
+  File configFile = SPIFFS.open("/config.json", "r");
+  if (!configFile) {
+    Serial.println("Failed to open config file");
+    return false;
+  }
+
+  size_t size = configFile.size();
+  if (size > 1024) {
+    Serial.println("Config file size is too large");
+    return false;
+  }
+
+  // Allocate a buffer to store contents of the file.
+  std::unique_ptr<char[]> buf(new char[size]);
+
+  // We don't use String here because ArduinoJson library requires the input
+  // buffer to be mutable. If you don't use ArduinoJson, you may as well
+  // use configFile.readString instead.
+  configFile.readBytes(buf.get(), size);
+
+  StaticJsonBuffer<1024> jsonBuffer;
+  JsonObject& json = jsonBuffer.parseObject(buf.get());
+
+  if (!json.success()) {
+    Serial.println("Failed to parse config file");
+    return false;
+  }
+
+  SSID = json["SSID"];
+  PSW = json["PSW"];
+  PushBulletAPIKey = json["PushBulletAPIKey"];
+  return true;
+}
+
+void setup() {  
   //Start the serial monitor
   Serial.begin(115200);
   Serial.println("Ready");
-  
-  
-  //Create the object, then read from EEPROM to in order to get the SSID and Password
-  //I do not want to expose my wifi details on the internet. 
-  int eeAddress = 0;
-  myObject myWiFiObj;
-  EEPROM.get(eeAddress, myWiFiObj);
 
+  //Mount the file system
+  if(!SPIFFS.begin()){
+    Serial.println("Failed to mount file system.");
+    return;  
+  }
+
+  if(!loadConfig()){
+    Serial.println("Failed to load config");  
+  }else{
+    Serial.println("Config Loaded");  
+  }
+  //Setup this variable as a global variable. I tried to use PushBulletAPIKey in the function sendMsgToDevice(). But nothing came through.
+  apiKeyValue = PushBulletAPIKey;
+  
   //Connect to WiFi
-  WiFi.begin(myWiFiObj.SSID.c_str(), myWiFiObj.Password.c_str());
+  WiFi.begin(SSID, PSW);
 
   //Wait for WiFi to Connect
   while (WiFi.status() != WL_CONNECTED){
@@ -102,7 +140,7 @@ void setup() {
   //Display connection info
   Serial.println("");
   Serial.print("Connected to ");
-  Serial.println(myWiFiObj.SSID);
+  Serial.println(SSID);
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
 
@@ -135,7 +173,8 @@ void setup() {
 
 void loop() {
   server.handleClient();
-  timer.update();  
+  timer.update();
+  yield(); 
 }
 
 void getCurrTemperature(){
@@ -198,7 +237,7 @@ void sendMsgToDevice(String prmMsg){
 
   client.print(String("POST ") + url + " HTTP/1.1\r\n" +
     "Host: " + HOST + "\r\n" +
-    "Authorization: Bearer " + PUSHBULLETAPIKEY + "\r\n" +
+    "Authorization: Bearer " + apiKeyValue + "\r\n" +
     "Content-Type: application/json\r\n" +
     "Content-Length: " +
     String(messagebody.length()) + "\r\n\r\n");
