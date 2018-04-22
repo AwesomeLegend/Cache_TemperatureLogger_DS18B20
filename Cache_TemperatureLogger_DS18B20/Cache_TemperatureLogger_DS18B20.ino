@@ -169,6 +169,9 @@ void setup() {
 
   //Setup the DS18B20 Temperature sensor
   sensors.begin();
+
+  //Get the temperature immediately
+  logTimer_onTick();
 }
 
 void loop() {
@@ -190,7 +193,7 @@ double getTemperature(){
 void logTimer_onTick(){
     String errormsg = "";
   
-    http.begin("http://192.168.101.199:57772/csp/temperaturelogger/rest/logTemperature");
+    http.begin("http://192.168.1.115:57772/csp/temperaturelogger/rest/logTemperature");
     http.addHeader("Content-Type", "application/x-www-form-urlencoded");
     int httpCode = http.POST("data={\"TemperatureReading\":\""+String(getTemperature())+"\"}");
     String payload = http.getString();
