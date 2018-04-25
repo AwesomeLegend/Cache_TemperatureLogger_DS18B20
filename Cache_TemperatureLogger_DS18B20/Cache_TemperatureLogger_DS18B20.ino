@@ -20,6 +20,9 @@ const char* PSW;
 const char* PushBulletAPIKey;
 String apiKeyValue;
 
+//Declare Pins
+const int WarningSpeaker = 5;
+
 //Instantiate classes
 Timer timer;
 ESP8266WebServer server ( 80 );
@@ -109,7 +112,10 @@ bool loadConfig() {
   return true;
 }
 
-void setup() {  
+void setup() {
+  //Setup pin modes
+  pinMode(WarningSpeaker,OUTPUT);
+   
   //Start the serial monitor
   Serial.begin(115200);
   Serial.println("Ready");
@@ -191,6 +197,12 @@ double getTemperature(){
 
 //Http Request to save the data to the cache database
 void logTimer_onTick(){
+    //Check if we are connected to the internet before attempting to send the request.
+    if (WiFi.status() != WL_CONNECTED){
+      playWarningSound(3);
+      return;
+    }
+    
     String errormsg = "";
   
     http.begin("http://192.168.1.115:57772/csp/temperaturelogger/rest/logTemperature");
@@ -227,6 +239,12 @@ void showMsg(String prmMsg){
 
 //Send message to PushBullit API
 void sendMsgToDevice(String prmMsg){
+  //Check if we are connected to the internet before attempting to send the request.
+  if (WiFi.status() != WL_CONNECTED){
+    playWarningSound(3);
+    return;
+  }
+  
   //Connect to Pushbullet
   if (!client.connect(HOST, HTTPSPORT)){
     Serial.println("Connection Failed");  
@@ -255,3 +273,14 @@ void sendMsgToDevice(String prmMsg){
       showMsg(line);
     }
  }
+
+  //Play audible sound as a warning that something went wrong.
+ void playWarningSound(int numberOfReps){
+    for(int i = 0; i < numberOfReps; i++)
+    {
+        analogWrite(WarningSpeaker, 255);
+        delay(10000);
+        analogWrite(WarningSpeaker, 0);
+        delay(5000);
+    }
+  }
